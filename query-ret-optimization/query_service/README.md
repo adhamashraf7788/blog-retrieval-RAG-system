@@ -154,6 +154,24 @@ score itself.
 
 ## Known limitations / TODO
 
+- [ ] **Classifier occasionally goes conversational instead of returning
+      JSON** — `LLMRouter` sometimes gets a reply like "I don't see a
+      query, could you provide one?" instead of a classification, causing
+      a 500. Seems to correlate with being near the rate limit (degraded
+      generation) and/or the length of `CLASSIFY_PROMPT`'s few-shot
+      examples burying the actual query. Mitigated with `temperature=0`
+      and an explicit `>>> QUERY TO CLASSIFY <<<` marker in the prompt,
+      but not fully eliminated — worth watching, and a candidate for
+      moving to a shorter prompt or a more reliable model if it persists.
+- [ ] **No rate-limit handling** — a `429` from Groq currently surfaces as a
+      `500` to the caller instead of retrying with backoff. `max_retries=3`
+      on the instructor client covers malformed JSON but does not
+      specifically back off on rate limits. Groq's free tier (8000 TPM) is
+      tight enough that this shows up under any real load — not just heavy
+      testing — since each request can make 1-2 LLM calls (router +
+      strategy). Next step: wrap the Groq call in explicit backoff-on-429
+      handling (e.g. `tenacity`, using the wait time Groq returns in the
+      error message) so rate limits degrade gracefully instead of 500ing.
 - [ ] Router occasionally misclassifies vague/indirect-reference queries
       (e.g. "tell me about the thing that replaced X") as passthrough —
       `CLASSIFY_PROMPT`'s few-shot examples don't yet cover this pattern
@@ -161,5 +179,6 @@ score itself.
 - [ ] No concurrency for multi-call strategies — not yet a problem
       since each strategy currently makes one LLM call
 - [ ] Decide with the retrieval owner what (if anything) goes in `metadata`
-- [ ] Groq free tier rate limits (~30 req/min) — fine for solo dev,
-      watch for this if both teammates test simultaneously
+- [ ] Groq free tier rate limits (~30 req/min, 8000 TPM) — fine for solo
+      dev with throttled eval runs, watch for this if both teammates test
+      simultaneously or under any sustained load

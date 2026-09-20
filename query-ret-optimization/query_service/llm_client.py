@@ -31,8 +31,12 @@ class LLMClient:
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
             response_model=schema,
-            # gpt-oss on Groq occasionally replies with a bare word instead
-            # of JSON — retry a couple times before giving up rather than
-            # failing the whole request on the first flaky response.
+            # gpt-oss on Groq occasionally replies with a bare word, or a
+            # conversational "please provide a query" instead of JSON —
+            # retry a couple times before giving up.
             max_retries=3,
+            # Deterministic, non-chatty output — this is a structured
+            # extraction task, not a conversation. Reduces the odds of the
+            # model wandering into a conversational reply instead of JSON.
+            temperature=0,
         )

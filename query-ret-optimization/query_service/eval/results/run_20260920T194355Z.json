@@ -1,0 +1,188 @@
+{
+  "timestamp": "20260920T194355Z",
+  "score": "14/17",
+  "correct": 14,
+  "errored": 2,
+  "total": 17,
+  "results": [
+    {
+      "query": "What is backpropagation?",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "passthrough",
+      "match": true,
+      "queries_out": [
+        "What is backpropagation?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Who invented the transformer architecture?",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "rewrite",
+      "match": false,
+      "queries_out": [
+        "Which researcher invented the transformer architecture?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What is the capital of France?",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "passthrough",
+      "match": true,
+      "queries_out": [
+        "What is the capital of France?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What's the deal with that transformer thing everyone talks about?",
+      "expected_strategy": "rewrite",
+      "actual_strategy": "rewrite",
+      "match": true,
+      "queries_out": [
+        "What is the transformer model that everyone is discussing?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "how attention works kinda",
+      "expected_strategy": "rewrite",
+      "actual_strategy": null,
+      "match": false,
+      "error": "Internal Server Error"
+    },
+    {
+      "query": "tell me about the thing that replaced RNNs in NLP",
+      "expected_strategy": "rewrite",
+      "actual_strategy": "rewrite",
+      "match": true,
+      "queries_out": [
+        "Explain how Transformers replaced RNNs in natural language processing."
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Best practices for model evaluation",
+      "expected_strategy": "expand",
+      "actual_strategy": "expand",
+      "match": true,
+      "queries_out": [
+        "Best practices for model evaluation",
+        "Optimal methods for evaluating models",
+        "Effective techniques for model assessment",
+        "Model testing best practices"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "How to improve retrieval quality in a RAG system",
+      "expected_strategy": "expand",
+      "actual_strategy": "expand",
+      "match": true,
+      "queries_out": [
+        "How to improve retrieval quality in a RAG system",
+        "Ways to enhance retrieval performance in a Retrieval\u2011Augmented Generation system",
+        "Techniques for boosting search quality within a RAG architecture",
+        "Methods to optimize document retrieval in a Retrieval\u2011Augmented Generation framework"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Techniques for reducing hallucination in LLMs",
+      "expected_strategy": "expand",
+      "actual_strategy": null,
+      "match": false,
+      "error": "Internal Server Error"
+    },
+    {
+      "query": "How does attention differ from RNNs, and why did transformers replace them?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "How does attention differ from RNNs?",
+        "Why did transformers replace RNNs?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What is chain-of-thought prompting and how does it compare to few-shot prompting?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "What is chain-of-thought prompting?",
+        "How does chain-of-thought prompting compare to few-shot prompting?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Compare vector search vs keyword search for retrieval, and explain when to use each",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "Compare vector search and keyword search for retrieval",
+        "Explain when to use vector search and when to use keyword search"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Why do transformers scale better than RNNs, and what are the main memory bottlenecks in attention?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "Why do transformers scale better than RNNs?",
+        "What are the main memory bottlenecks in attention?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What is retrieval-augmented generation? How does it reduce hallucination? What are its main limitations?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "What is retrieval-augmented generation?",
+        "How does retrieval-augmented generation reduce hallucination?",
+        "What are the main limitations of retrieval-augmented generation?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "positional encoding",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "passthrough",
+      "match": true,
+      "queries_out": [
+        "positional encoding"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "How does the vault structure differ from a flat note system, and why did you switch?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "How does the vault structure differ from a flat note system?",
+        "Why did you switch from a flat note system to a vault structure?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "explain reasoning models vs base LLMs and when each is worth the latency cost",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "Explain the difference between reasoning models and base LLMs.",
+        "When is a reasoning model worth the latency cost?",
+        "When is a base LLM worth the latency cost?"
+      ],
+      "metadata": {}
+    }
+  ]
+}

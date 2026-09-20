@@ -39,10 +39,15 @@ Query: Best practices for model evaluation
 Category: expand
 (reason: single intent, but broad — synonyms/related terms help recall)
 
-Query: {query}
+Now classify this exact query — it is a real user query, not a request
+for more information, and you must classify it even if it looks
+incomplete or unusual on its own:
+
+>>> QUERY TO CLASSIFY: {query} <<<
 
 Return your answer as JSON in exactly this form: {{"strategy": "<category>"}}
-Do not return anything else — no explanation, no bare word, only that JSON object."""
+Do not return anything else — no explanation, no bare word, no request for
+clarification, only that JSON object."""
 
 
 class _ClassificationOutput(BaseModel):
