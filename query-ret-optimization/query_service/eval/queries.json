@@ -1,0 +1,23 @@
+[
+  {"query": "What is backpropagation?", "expected_strategy": "passthrough"},
+  {"query": "Who invented the transformer architecture?", "expected_strategy": "passthrough"},
+  {"query": "What is the capital of France?", "expected_strategy": "passthrough"},
+
+  {"query": "What's the deal with that transformer thing everyone talks about?", "expected_strategy": "rewrite"},
+  {"query": "how attention works kinda", "expected_strategy": "rewrite"},
+  {"query": "tell me about the thing that replaced RNNs in NLP", "expected_strategy": "rewrite"},
+
+  {"query": "Best practices for model evaluation", "expected_strategy": "expand"},
+  {"query": "How to improve retrieval quality in a RAG system", "expected_strategy": "expand"},
+  {"query": "Techniques for reducing hallucination in LLMs", "expected_strategy": "expand"},
+
+  {"query": "How does attention differ from RNNs, and why did transformers replace them?", "expected_strategy": "decompose"},
+  {"query": "What is chain-of-thought prompting and how does it compare to few-shot prompting?", "expected_strategy": "decompose"},
+  {"query": "Compare vector search vs keyword search for retrieval, and explain when to use each", "expected_strategy": "decompose"},
+  {"query": "Why do transformers scale better than RNNs, and what are the main memory bottlenecks in attention?", "expected_strategy": "decompose"},
+  {"query": "What is retrieval-augmented generation? How does it reduce hallucination? What are its main limitations?", "expected_strategy": "decompose"},
+
+  {"query": "positional encoding", "expected_strategy": "passthrough"},
+  {"query": "How does the vault structure differ from a flat note system, and why did you switch?", "expected_strategy": "decompose"},
+  {"query": "explain reasoning models vs base LLMs and when each is worth the latency cost", "expected_strategy": "decompose"}
+]

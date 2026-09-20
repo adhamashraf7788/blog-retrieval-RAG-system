@@ -1,0 +1,195 @@
+{
+  "timestamp": "20260920T154331Z",
+  "score": "16/17",
+  "correct": 16,
+  "total": 17,
+  "results": [
+    {
+      "query": "What is backpropagation?",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "passthrough",
+      "match": true,
+      "queries_out": [
+        "What is backpropagation?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Who invented the transformer architecture?",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "passthrough",
+      "match": true,
+      "queries_out": [
+        "Who invented the transformer architecture?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What is the capital of France?",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "passthrough",
+      "match": true,
+      "queries_out": [
+        "What is the capital of France?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What's the deal with that transformer thing everyone talks about?",
+      "expected_strategy": "rewrite",
+      "actual_strategy": "rewrite",
+      "match": true,
+      "queries_out": [
+        "What is the significance and key details of transformer models that are widely discussed?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "how attention works kinda",
+      "expected_strategy": "rewrite",
+      "actual_strategy": "rewrite",
+      "match": true,
+      "queries_out": [
+        "How does attention work in neural networks?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "tell me about the thing that replaced RNNs in NLP",
+      "expected_strategy": "rewrite",
+      "actual_strategy": "rewrite",
+      "match": true,
+      "queries_out": [
+        "Which neural network architecture replaced RNNs in natural language processing?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Best practices for model evaluation",
+      "expected_strategy": "expand",
+      "actual_strategy": "expand",
+      "match": true,
+      "queries_out": [
+        "Best practices for model evaluation",
+        "Model evaluation best practices",
+        "Recommended practices for evaluating models",
+        "Top strategies for model assessment"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "How to improve retrieval quality in a RAG system",
+      "expected_strategy": "expand",
+      "actual_strategy": "expand",
+      "match": true,
+      "queries_out": [
+        "How to improve retrieval quality in a RAG system",
+        "Ways to enhance retrieval performance in a RAG architecture",
+        "Methods for boosting retrieval quality in retrieval-augmented generation",
+        "Techniques to improve search accuracy within a RAG system"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Techniques for reducing hallucination in LLMs",
+      "expected_strategy": "expand",
+      "actual_strategy": "passthrough",
+      "match": false,
+      "queries_out": [
+        "Techniques for reducing hallucination in LLMs"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "How does attention differ from RNNs, and why did transformers replace them?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "How does attention differ from RNNs?",
+        "Why did transformers replace RNNs?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What is chain-of-thought prompting and how does it compare to few-shot prompting?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "What is chain-of-thought prompting?",
+        "How does chain-of-thought prompting compare to few-shot prompting?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Compare vector search vs keyword search for retrieval, and explain when to use each",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "Compare vector search vs keyword search for retrieval, and explain when to use each."
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "Why do transformers scale better than RNNs, and what are the main memory bottlenecks in attention?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "Why do transformers scale better than RNNs?",
+        "What are the main memory bottlenecks in attention?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "What is retrieval-augmented generation? How does it reduce hallucination? What are its main limitations?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "What is retrieval-augmented generation?",
+        "How does retrieval-augmented generation reduce hallucination?",
+        "What are the main limitations of retrieval-augmented generation?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "positional encoding",
+      "expected_strategy": "passthrough",
+      "actual_strategy": "passthrough",
+      "match": true,
+      "queries_out": [
+        "positional encoding"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "How does the vault structure differ from a flat note system, and why did you switch?",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "What is the difference between a vault structure and a flat note system?",
+        "Why did you switch from a flat note system to a vault structure?"
+      ],
+      "metadata": {}
+    },
+    {
+      "query": "explain reasoning models vs base LLMs and when each is worth the latency cost",
+      "expected_strategy": "decompose",
+      "actual_strategy": "decompose",
+      "match": true,
+      "queries_out": [
+        "What are reasoning models in the context of language models?",
+        "What are base language models (LLMs)?",
+        "How do reasoning models differ from base LLMs?",
+        "When is it worth incurring the additional latency of reasoning models compared to base LLMs?",
+        "weights",
+        ":null"
+      ],
+      "metadata": {}
+    }
+  ]
+}

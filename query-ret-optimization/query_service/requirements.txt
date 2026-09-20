@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pydantic
+groq
+instructor
+python-dotenv
+httpx
