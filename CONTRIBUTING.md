@@ -84,7 +84,7 @@ Each Issue should contain, where applicable:
 
 Issues make the work traceable and show what each sub-team is implementing.
 
-> 📌 See [Example Issue #2](https://github.com/adhamashraf7788/blog-retrieval-RAG-system/issues/2) for reference.
+> 📌 See [Issue #5](https://github.com/adhamashraf7788/blog-retrieval-RAG-system/issues/5) for reference.
 
 ### 3. main and Pull Requests
 
