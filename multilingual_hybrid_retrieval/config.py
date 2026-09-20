@@ -1,7 +1,7 @@
 DB_CONFIG = {
     "dbname": "multilingual_retrieval",
     "user": "postgres",
-    "password": "HussenSabry#99",
+    "password": "............",
     "host": "localhost",
     "port": 5432
 }
