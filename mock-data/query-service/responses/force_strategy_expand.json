@@ -1,0 +1,11 @@
+{
+  "original_query": "vector databases",
+  "strategy_used": "expand",
+  "queries": [
+    "vector databases",
+    "vector database systems",
+    "embedding storage and retrieval systems",
+    "vector search databases"
+  ],
+  "metadata": {}
+}

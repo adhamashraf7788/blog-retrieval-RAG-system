@@ -1,0 +1,8 @@
+{
+  "original_query": "What is backpropagation?",
+  "strategy_used": "passthrough",
+  "queries": [
+    "What is backpropagation?"
+  ],
+  "metadata": {}
+}

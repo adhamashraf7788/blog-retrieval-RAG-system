@@ -1,0 +1,10 @@
+{
+  "original_query": "What is retrieval-augmented generation? How does it reduce hallucination? What are its main limitations?",
+  "strategy_used": "decompose",
+  "queries": [
+    "What is retrieval-augmented generation?",
+    "How does retrieval-augmented generation reduce hallucination?",
+    "What are the main limitations of retrieval-augmented generation?"
+  ],
+  "metadata": {}
+}

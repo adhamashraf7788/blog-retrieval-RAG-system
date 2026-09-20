@@ -1,0 +1,9 @@
+{
+  "original_query": "How does attention differ from RNNs, and why did transformers replace them?",
+  "strategy_used": "decompose",
+  "queries": [
+    "How does attention differ from RNNs?",
+    "Why did transformers replace RNNs?"
+  ],
+  "metadata": {}
+}
