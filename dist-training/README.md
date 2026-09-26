@@ -1,10 +1,5 @@
 # LoRA + Horovod Training Pipeline — Setup & Deployment Notes
 
-**Audience for this doc:** whoever is setting up and running this pipeline
-(currently expected to be the lead engineer). Every file below lists exactly
-which machine it runs on, what has to already be true before running it, and
-what it hands off to the next step.
-
 ## Overview of the pipeline
 
 Raw articles → (RAG API call) → training CSV → (Horovod cluster) → trained
