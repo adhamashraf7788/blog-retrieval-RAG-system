@@ -1,7 +1,9 @@
+import asyncio
+
 from pydantic import BaseModel
 
 from query_service.llm_client import LLMClient
-from query_service.models import ProcessedQuery, QueryStrategy
+from query_service.models import QueryStrategy
 from query_service.strategies.base import QueryStrategyBase
 
 DECOMPOSE_PROMPT = """Break the query below into independent, self-contained \
@@ -41,13 +43,15 @@ class DecomposeStrategy(QueryStrategyBase):
     def __init__(self, llm_client: LLMClient):
         self.llm_client = llm_client
 
-    async def run(self, query: str) -> ProcessedQuery:
+    async def _decompose_one(self, query: str) -> list[str]:
         result = await self.llm_client.generate_structured(
             prompt=DECOMPOSE_PROMPT.format(query=query),
             schema=_DecomposeOutput,
         )
-        return ProcessedQuery(
-            original_query=query,
-            strategy_used=self.name,
-            queries=result.sub_queries,
-        )
+        return result.sub_queries
+
+    async def run_many(self, queries: list[str]) -> list[str]:
+        if not queries:
+            return []
+        decomposed = await asyncio.gather(*(self._decompose_one(q) for q in queries))
+        return [q for group in decomposed for q in group]

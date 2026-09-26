@@ -1,7 +1,9 @@
+import asyncio
+
 from pydantic import BaseModel
 
 from query_service.llm_client import LLMClient
-from query_service.models import ProcessedQuery, QueryStrategy
+from query_service.models import QueryStrategy
 from query_service.strategies.base import QueryStrategyBase
 
 EXPAND_PROMPT = """Generate {n} alternative phrasings of the query below, \
@@ -24,15 +26,17 @@ class ExpandStrategy(QueryStrategyBase):
         self.llm_client = llm_client
         self.n_expansions = n_expansions
 
-    async def run(self, query: str) -> ProcessedQuery:
+    async def _expand_one(self, query: str) -> list[str]:
         result = await self.llm_client.generate_structured(
             prompt=EXPAND_PROMPT.format(query=query, n=self.n_expansions),
             schema=_ExpandOutput,
         )
         # Original query stays in the set — expansions supplement, not replace.
-        all_queries = [query] + result.expanded_queries
-        return ProcessedQuery(
-            original_query=query,
-            strategy_used=self.name,
-            queries=all_queries,
-        )
+        return [query] + result.expanded_queries
+
+    async def run_many(self, queries: list[str]) -> list[str]:
+        if not queries:
+            return []
+        expanded = await asyncio.gather(*(self._expand_one(q) for q in queries))
+        # Flatten, preserving per-query order.
+        return [q for group in expanded for q in group]

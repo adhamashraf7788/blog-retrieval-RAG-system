@@ -5,3 +5,4 @@ groq
 instructor
 python-dotenv
 httpx
+tenacity

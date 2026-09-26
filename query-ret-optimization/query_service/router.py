@@ -11,6 +11,10 @@ from query_service.models import QueryStrategy
 # vague ("kinda", "best practices for X"), so keep this low.
 SIMPLE_WORD_THRESHOLD = 3
 MULTI_HOP_KEYWORDS = ("compare", " vs ", "difference between", " and why", " and how")
+# Informal hedge words signal vague phrasing that needs a rewrite polish,
+# even when the query is short (e.g. "how attention works kinda").
+# Checked before the LLM call — free and deterministic.
+HEDGE_WORDS = ("kinda", "sorta", "sort of", "kind of", "like ", "stuff", "thingy", "ish")
 
 CLASSIFY_PROMPT = """Classify the query below into exactly one category:
 
@@ -38,6 +42,11 @@ Category: rewrite
 Query: Best practices for model evaluation
 Category: expand
 (reason: single intent, but broad — synonyms/related terms help recall)
+
+Query: how attention works kinda
+Category: rewrite
+(reason: single intent, but trailing hedge word "kinda" makes it vague —
+hedged/informal phrasing always needs clarifying, never passthrough)
 
 Now classify this exact query — it is a real user query, not a request
 for more information, and you must classify it even if it looks
@@ -67,6 +76,8 @@ class HeuristicRouter(RouterBase):
         lowered = query.lower()
         if any(kw in lowered for kw in MULTI_HOP_KEYWORDS):
             return QueryStrategy.DECOMPOSE
+        if any(hw in lowered for hw in HEDGE_WORDS):
+            return QueryStrategy.REWRITE
         if len(query.split()) <= SIMPLE_WORD_THRESHOLD:
             return QueryStrategy.PASSTHROUGH
         return QueryStrategy.REWRITE
@@ -100,6 +111,11 @@ class HybridRouter(RouterBase):
         # skip the LLM call entirely when we already know the answer.
         if any(kw in lowered for kw in MULTI_HOP_KEYWORDS):
             return QueryStrategy.DECOMPOSE
+        # Hedged/informal phrasing always needs a rewrite polish —
+        # short-circuit before the word-count shortcut so e.g.
+        # "how attention works kinda" never lands on passthrough.
+        if any(hw in lowered for hw in HEDGE_WORDS):
+            return QueryStrategy.REWRITE
         if len(query.split()) <= SIMPLE_WORD_THRESHOLD:
             return QueryStrategy.PASSTHROUGH
         return await self.llm_router.decide(query)

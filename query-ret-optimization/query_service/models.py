@@ -7,7 +7,7 @@ these shapes stay stable.
 """
 
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class QueryStrategy(str, Enum):
@@ -19,8 +19,11 @@ class QueryStrategy(str, Enum):
 
 class QueryRequest(BaseModel):
     query: str
-    # Optional escape hatch for testing/eval — force a specific strategy
-    # instead of letting the router decide.
+    # Explicit chain to run, in order — e.g. ["decompose", "rewrite"].
+    # If set, the router is skipped entirely. Use for testing/eval.
+    force_strategies: list[QueryStrategy] | None = None
+    # Deprecated single-strategy escape hatch — kept for backward compat.
+    # If both are set, force_strategies wins.
     force_strategy: QueryStrategy | None = None
 
 
@@ -31,7 +34,15 @@ class ProcessedQuery(BaseModel):
     """
 
     original_query: str
-    strategy_used: QueryStrategy
+    strategies_used: list[QueryStrategy] = Field(
+        description="Ordered chain that was applied, e.g. ['decompose', 'rewrite']."
+    )
+    # Deprecated alias for the last strategy in the chain — kept so old
+    # retrieval/eval code reading `.strategy_used` keeps working.
+    strategy_used: QueryStrategy | None = Field(
+        default=None,
+        description="Deprecated: equals strategies_used[-1]. Prefer strategies_used.",
+    )
     queries: list[str] = Field(
         description="One or more retrieval-ready queries, in priority order."
     )
@@ -43,3 +54,10 @@ class ProcessedQuery(BaseModel):
             "Retrieval must work correctly even if this is ignored entirely."
         ),
     )
+
+    @model_validator(mode="after")
+    def _fill_strategy_used(self):
+        # Keep the deprecated alias in sync so old readers keep working.
+        if self.strategies_used and self.strategy_used is None:
+            self.strategy_used = self.strategies_used[-1]
+        return self

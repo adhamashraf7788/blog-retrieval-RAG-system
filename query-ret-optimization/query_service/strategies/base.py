@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from query_service.models import ProcessedQuery, QueryStrategy
+from query_service.models import QueryStrategy
 
 
 class QueryStrategyBase(ABC):
@@ -13,5 +13,8 @@ class QueryStrategyBase(ABC):
     name: QueryStrategy
 
     @abstractmethod
-    async def run(self, query: str) -> ProcessedQuery:
+    async def run_many(self, queries: list[str]) -> list[str]:
+        """Transform a list of queries, preserving order where possible.
+        This is what the pipeline chains — output of one strategy feeds
+        the next. Implementations must handle empty lists (return [])."""
         ...

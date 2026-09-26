@@ -1,14 +1,16 @@
 # Query Service
 
-> **Frozen checkpoint — router-only baseline.**
-> This branch (`checkpoint/router-only`) preserves the query service exactly
-> as it was before multi-strategy chaining: the router picks **exactly one**
-> strategy per query and the pipeline runs it once. No chains, no
-> `force_strategies`, no 429 retry. See
-> [Baseline checkpoint](#baseline-checkpoint-router-only-2026-09-26) at the
-> bottom for what this baseline contains, what it proved, where it falls
-> short, and where the multi-strategy work takes it. To see everything built
-> on top of this point: `git diff checkpoint/router-only`.
+> **Branch note — baseline docs + multi-strategy work.**
+> This branch (`checkpoint/router-only`) started as a frozen router-only
+> baseline (see [Baseline checkpoint](#baseline-checkpoint-router-only-2026-09-26)
+> below: the router picked **exactly one** strategy per query, no chains)
+> and now also carries the multi-strategy session work on top: chained
+> composition (`chain_map`, `run_many`, `force_strategies`), 429
+> retry-then-429 handling, sequential rewrite fan-out, the hedge-word
+> routing fix, and eval harness upgrades. The `Baseline checkpoint` section
+> describes the frozen starting point; everything else in this file
+> describes the current code. To see only the post-baseline work:
+> `git diff bc84e34 -- query-ret-optimization`.
 
 A pluggable query-transformation service for RAG. Takes a raw user query,
 returns one or more retrieval-ready queries — via rewriting, expansion,
@@ -167,12 +169,24 @@ score itself.
 - [ ] Router occasionally misclassifies vague/indirect-reference queries
       (e.g. "tell me about the thing that replaced X") as passthrough —
       `CLASSIFY_PROMPT`'s few-shot examples don't yet cover this pattern
+- [ ] Consider rewrite-first fallback for garbled input — default chain stays
+      `decompose -> rewrite -> expand` (split before polish: rewriting a
+      multi-intent query first risks blending intents and erasing split
+      signals). If decompose ever fails on severely malformed queries, a
+      light `rewrite -> decompose` pre-clean pass could be tried as a
+      fallback, not the default. Revisit only with failing examples.
 - [ ] No caching of repeated queries — every call re-hits the LLM
-- [ ] No concurrency for multi-call strategies — not yet a problem
-      since each strategy currently makes one LLM call
+- [ ] Rewrite fan-out is sequential (`REWRITE_CONCURRENCY = 1` in `config.py`)
+      to spread Groq TPM usage — raise if p99 latency matters more than
+      rate-limit headroom (quality is identical either way: calls are
+      independent, same prompt/model, `temperature=0`)
 - [ ] Decide with the retrieval owner what (if anything) goes in `metadata`
-- [ ] Groq free tier rate limits (~30 req/min) — fine for solo dev,
-      watch for this if both teammates test simultaneously
+- [ ] Groq free tier rate limits (~30 req/min, 8000 TPM) — chains cost 2-5
+      LLM calls per query now (router + stages + per-sub-query rewrites).
+      `llm_client.py` retries twice honoring Groq's `try again in Xs` wait,
+      then the API returns truthful 429 + `Retry-After` instead of 500.
+      Eval defaults to `--delay 9` between requests; raise it if both
+      teammates test simultaneously
 
 ## Baseline checkpoint (router-only, 2026-09-26)
 
@@ -240,7 +254,7 @@ held up unchanged through testing.
    part, then diversify for recall. The single-choice router cannot express
    that, and parallel fan-out (run all, merge) just multiplies noise.
 
-### Where the multi-strategy work takes it (planned, off-branch)
+### Where the multi-strategy work takes it (implemented on this branch, on top of the checkpoint)
 
 - **Chained composition, split-before-polish order:**
   `decompose → rewrite → expand`. Decompose first (split signals + pronouns
@@ -269,5 +283,7 @@ held up unchanged through testing.
   short-circuits to `rewrite` before the word-count check, plus a hedge
   few-shot example in `CLASSIFY_PROMPT`.
 
-Compare any of this against the frozen code here:
-`git diff checkpoint/router-only` (from the work branch).
+Compare any of this against the frozen baseline code:
+`git diff bc84e34 -- query-ret-optimization` shows all post-baseline work.
+(The `checkpoint/router-only-baseline` marker branch, if it still exists,
+points at the same frozen tree.)
