@@ -9,14 +9,21 @@ async def main():
 
     query = "Where was the CEO of Company A working before?"
 
-    evaluator = CRAGEvaluator()
+    evaluator = CRAGEvaluator() # query + chunks --> LLM --> judgment
     retriever = FakeRetriever()
 
-    crag = CRAGService(
+    crag = CRAGService(         
         evaluator=evaluator,
         retriever=retriever,
         max_attempts=2,
     )
+    # CRAGService:
+    # 1. Retrieve
+    # 2. Evaluate
+    # 3. If sufficient → stop
+    # 4. If insufficient → retrieve again
+    # 5. Evaluate again
+    # 6. Stop after max attempts
 
     result = await crag.process(query)
 
