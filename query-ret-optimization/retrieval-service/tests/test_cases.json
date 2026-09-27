@@ -1,0 +1,90 @@
+[
+  {
+    "id": "case-001",
+    "query": "Where was the CEO of Company A working before?",
+    "chunks": [
+      "John Smith is the CEO of Company A.",
+      "Before joining Company A, John Smith worked at Company B as Chief Operating Officer."
+    ],
+    "expected": "sufficient"
+  },
+  {
+    "id": "case-002",
+    "query": "Where was the CEO of Company A working before?",
+    "chunks": [
+      "Company A announced a new product.",
+      "Company A opened a new office in London.",
+      "Company A's revenue increased by 15%."
+    ],
+    "expected": "insufficient"
+  },
+  {
+    "id": "case-003",
+    "query": "What technology does Company B use for its search system?",
+    "chunks": [
+      "Company B uses Elasticsearch to power its search system."
+    ],
+    "expected": "sufficient"
+  },
+  {
+    "id": "case-004",
+    "query": "What technology does Company B use for its search system?",
+    "chunks": [
+      "Company B was founded in 2012.",
+      "Company B has offices in London and Berlin."
+    ],
+    "expected": "insufficient"
+  },
+  {
+    "id": "case-005",
+    "query": "Who founded Company C?",
+    "chunks": [
+      "Company C was founded by Sarah Ahmed and Omar Hassan in 2018."
+    ],
+    "expected": "sufficient"
+  },
+  {
+    "id": "case-006",
+    "query": "Who founded Company C?",
+    "chunks": [
+      "Company C raised $20 million in funding.",
+      "The company currently employs 500 people."
+    ],
+    "expected": "insufficient"
+  },
+  {
+    "id": "case-007",
+    "query": "When was Product X launched?",
+    "chunks": [
+      "Product X was launched in March 2024."
+    ],
+    "expected": "sufficient"
+  },
+  {
+    "id": "case-008",
+    "query": "When was Product X launched?",
+    "chunks": [
+      "Product X is a cloud-based platform.",
+      "The platform has more than 100,000 users."
+    ],
+    "expected": "insufficient"
+  },
+  {
+    "id": "case-009",
+    "query": "Why did Company D change its database architecture?",
+    "chunks": [
+      "Company D experienced scalability problems as its user base grew.",
+      "The company migrated to a distributed database architecture to handle the increased workload."
+    ],
+    "expected": "sufficient"
+  },
+  {
+    "id": "case-010",
+    "query": "Why did Company D change its database architecture?",
+    "chunks": [
+      "Company D was founded in 2015.",
+      "Company D has offices in New York and Toronto."
+    ],
+    "expected": "insufficient"
+  }
+]
