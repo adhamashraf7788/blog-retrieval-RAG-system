@@ -20,5 +20,8 @@
 
   {"query": "positional encoding", "expected_strategies": ["passthrough"]},
   {"query": "How does the vault structure differ from a flat note system, and why did you switch?", "expected_strategies": ["decompose", "rewrite"]},
-  {"query": "explain reasoning models vs base LLMs and when each is worth the latency cost", "expected_strategies": ["decompose", "rewrite"]}
+  {"query": "explain reasoning models vs base LLMs and when each is worth the latency cost", "expected_strategies": ["decompose", "rewrite"]},
+
+  {"query": "Compare dense vs sparse embeddings for retrieval, and when should I use each in a RAG system?", "expected_strategies": ["decompose", "rewrite", "expand"], "force_strategies": ["decompose", "rewrite", "expand"]},
+  {"query": "that embedding stuff for search kinda", "expected_strategies": ["rewrite", "expand"], "force_strategies": ["rewrite", "expand"]}
 ]

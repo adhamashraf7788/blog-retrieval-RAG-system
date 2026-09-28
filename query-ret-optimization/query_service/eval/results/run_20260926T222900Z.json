@@ -1,0 +1,429 @@
+{
+  "timestamp": "20260926T222900Z",
+  "score": "20/20",
+  "correct": 20,
+  "errored": 0,
+  "total": 20,
+  "forced_chain": null,
+  "rate_limited": 0,
+  "results": [
+    {
+      "query": "What is backpropagation?",
+      "expected_strategies": [
+        "passthrough"
+      ],
+      "actual_strategies": [
+        "passthrough"
+      ],
+      "match": true,
+      "queries_out": [
+        "What is backpropagation?"
+      ],
+      "metadata": {
+        "chain": [
+          "passthrough"
+        ]
+      }
+    },
+    {
+      "query": "Who invented the transformer architecture?",
+      "expected_strategies": [
+        "passthrough"
+      ],
+      "actual_strategies": [
+        "passthrough"
+      ],
+      "match": true,
+      "queries_out": [
+        "Who invented the transformer architecture?"
+      ],
+      "metadata": {
+        "chain": [
+          "passthrough"
+        ]
+      }
+    },
+    {
+      "query": "What is the capital of France?",
+      "expected_strategies": [
+        "passthrough"
+      ],
+      "actual_strategies": [
+        "passthrough"
+      ],
+      "match": true,
+      "queries_out": [
+        "What is the capital of France?"
+      ],
+      "metadata": {
+        "chain": [
+          "passthrough"
+        ]
+      }
+    },
+    {
+      "query": "What's the deal with that transformer thing everyone talks about?",
+      "expected_strategies": [
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "What is the transformer architecture that everyone is talking about?"
+      ],
+      "metadata": {
+        "chain": [
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "how attention works kinda",
+      "expected_strategies": [
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "How does attention work?"
+      ],
+      "metadata": {
+        "chain": [
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "tell me about the thing that replaced RNNs in NLP",
+      "expected_strategies": [
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "What are transformer models that replaced RNNs in natural language processing?"
+      ],
+      "metadata": {
+        "chain": [
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "explain transformers sorta",
+      "expected_strategies": [
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "Explain transformers in a simple way"
+      ],
+      "metadata": {
+        "chain": [
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "Best practices for model evaluation",
+      "expected_strategies": [
+        "expand"
+      ],
+      "actual_strategies": [
+        "expand"
+      ],
+      "match": true,
+      "queries_out": [
+        "Best practices for model evaluation",
+        "Effective methods for evaluating models",
+        "Model assessment best practices",
+        "Strategies for model evaluation"
+      ],
+      "metadata": {
+        "chain": [
+          "expand"
+        ]
+      }
+    },
+    {
+      "query": "How to improve retrieval quality in a RAG system",
+      "expected_strategies": [
+        "expand"
+      ],
+      "actual_strategies": [
+        "expand"
+      ],
+      "match": true,
+      "queries_out": [
+        "How to improve retrieval quality in a RAG system",
+        "Ways to enhance retrieval performance in a Retrieval-Augmented Generation system",
+        "Methods for improving search quality within a RAG framework",
+        "Techniques to boost document retrieval accuracy in a Retrieval-Augmented Generation setup"
+      ],
+      "metadata": {
+        "chain": [
+          "expand"
+        ]
+      }
+    },
+    {
+      "query": "Techniques for reducing hallucination in LLMs",
+      "expected_strategies": [
+        "expand"
+      ],
+      "actual_strategies": [
+        "expand"
+      ],
+      "match": true,
+      "queries_out": [
+        "Techniques for reducing hallucination in LLMs",
+        "Methods to mitigate hallucination in large language models",
+        "Strategies for preventing hallucinations in LLMs",
+        "Techniques to reduce false generation in large language models"
+      ],
+      "metadata": {
+        "chain": [
+          "expand"
+        ]
+      }
+    },
+    {
+      "query": "How does attention differ from RNNs, and why did transformers replace them?",
+      "expected_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "How does the attention mechanism differ from recurrent neural networks?",
+        "Why have transformers replaced recurrent neural networks?"
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "What is chain-of-thought prompting and how does it compare to few-shot prompting?",
+      "expected_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "Explain chain-of-thought prompting in AI language models.",
+        "Compare chain-of-thought prompting to few-shot prompting."
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "Compare vector search vs keyword search for retrieval, and explain when to use each",
+      "expected_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "Compare vector-based search and keyword-based search for information retrieval.",
+        "Explain the appropriate use cases for vector search versus keyword search."
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "Why do transformers scale better than RNNs, and what are the main memory bottlenecks in attention?",
+      "expected_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "What causes transformers to scale more effectively than recurrent neural networks?",
+        "What are the primary memory bottlenecks in attention mechanisms?"
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "What is retrieval-augmented generation? How does it reduce hallucination? What are its main limitations?",
+      "expected_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "What does retrieval-augmented generation refer to?",
+        "How does retrieval-augmented generation reduce hallucinations in AI-generated text?",
+        "What are the primary limitations of retrieval-augmented generation?"
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "positional encoding",
+      "expected_strategies": [
+        "passthrough"
+      ],
+      "actual_strategies": [
+        "passthrough"
+      ],
+      "match": true,
+      "queries_out": [
+        "positional encoding"
+      ],
+      "metadata": {
+        "chain": [
+          "passthrough"
+        ]
+      }
+    },
+    {
+      "query": "How does the vault structure differ from a flat note system, and why did you switch?",
+      "expected_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "How does a vault-based note organization differ from a flat note system?",
+        "What prompted the transition from a flat note system to a vault-based structure?"
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "explain reasoning models vs base LLMs and when each is worth the latency cost",
+      "expected_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite"
+      ],
+      "match": true,
+      "queries_out": [
+        "Explain how reasoning models differ from base large language models.",
+        "When does the added latency of a reasoning model justify its performance benefits?",
+        "When does the latency cost of a base LLM justify its use?"
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite"
+        ]
+      }
+    },
+    {
+      "query": "Compare dense vs sparse embeddings for retrieval, and when should I use each in a RAG system?",
+      "expected_strategies": [
+        "decompose",
+        "rewrite",
+        "expand"
+      ],
+      "actual_strategies": [
+        "decompose",
+        "rewrite",
+        "expand"
+      ],
+      "match": true,
+      "queries_out": [
+        "Compare the effectiveness of dense versus sparse embeddings in information retrieval systems.",
+        "Assess the performance of dense versus sparse embeddings in information retrieval systems",
+        "Evaluate how dense and sparse embeddings compare in effectiveness for information retrieval",
+        "Compare the efficacy of dense and sparse embedding techniques in IR systems",
+        "When is it appropriate to use dense embeddings in a Retrieval-Augmented Generation (RAG) system?",
+        "When should dense embeddings be employed in a Retrieval-Augmented Generation system?",
+        "In what situations is it suitable to use dense embeddings within a RAG framework?",
+        "When is it best to apply dense embeddings in a Retrieval-Augmented Generation architecture?"
+      ],
+      "metadata": {
+        "chain": [
+          "decompose",
+          "rewrite",
+          "expand"
+        ]
+      }
+    },
+    {
+      "query": "that embedding stuff for search kinda",
+      "expected_strategies": [
+        "rewrite",
+        "expand"
+      ],
+      "actual_strategies": [
+        "rewrite",
+        "expand"
+      ],
+      "match": true,
+      "queries_out": [
+        "embedding techniques for search",
+        "search embedding methods",
+        "embedding strategies for information retrieval",
+        "techniques for embedding in search"
+      ],
+      "metadata": {
+        "chain": [
+          "rewrite",
+          "expand"
+        ]
+      }
+    }
+  ]
+}
