@@ -1,30 +1,50 @@
 """
 stream_to_db_parallel.py
 
-Parallel version of stream_to_db.py: spins up N worker processes and hands
-each one a different CC-NEWS WARC file to stream, extract, and write to
-PostgreSQL.
+Parallel CC-NEWS -> PostgreSQL streamer (N worker processes, one WARC each).
 
-Changes in this revision:
-    - NUM_FILES / MAX_WORKERS / YEAR / MONTH configurable via CLI or env
-      (no more hardcoded 1/1 for production runs).
-    - Network timeouts on manifest + WARC downloads (default 120s) so a
-      hung connection cannot block a worker forever.
-    - Clearer error categories: STREAM (network/parse), EXTRACT, DB.
-    - Resume still file-level via .processed_warc_files.json; a file is
-      only marked done if records_seen > 0 (crash mid-file retries next run).
-    - torch.set_num_threads capped per worker to avoid CPU oversubscription.
+Changes in this revision (less noise in the DB):
+    - is_article_url(): home pages, tag/category/search/video pages,
+      advertorial URLs and blocked domains are skipped BEFORE extraction
+      (also saves CPU).
+    - Near-duplicate articles (same first ~400 characters, e.g. wire copy
+      syndicated on many sites) are stored once per WARC file.
+    - extractors.py no longer falls back to raw <body> text and now keeps
+      paragraph breaks; its global floor is 50 words, so --min-words-ar 50
+      really works. --min-words-ar below 50 has no effect.
+
+Earlier changes (goal: balanced languages, ~1000 chunks each):
+    - EN down-sampling: only a fraction of English articles is kept
+      (--en-keep-rate, default 0.1) so the DB fills with Arabic/French
+      instead of tens of thousands of English chunks nobody needs.
+    - Lower word threshold for Arabic (--min-words-ar, default 50).
+      Non-Arabic articles still need --min-words (default 80).
+      Language is only known after detection, so the pre-filter uses the
+      lower value and non-Arabic short articles are dropped afterwards.
+    - Per-language "queued for DB" counters printed at the end, so you can
+      see how many ar / en / fr articles this run added.
+    - FIX (Windows): settings are now passed to workers as function
+      arguments. Before, they were module globals set in the parent, which
+      spawned worker processes on Windows do NOT inherit (they re-import
+      the module and get the defaults).
+    - Resume is still file-level via .processed_warc_files.json.
+      Already-processed WARC files are skipped, so to add data, raise
+      --num-files (new files are picked up automatically).
 """
 
 import argparse
+import re
 import sys
 import os
 import time
 import json
 import hashlib
 import gzip
+import random
 import urllib.request
 import urllib.error
+from urllib.parse import urlparse
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import cpu_count
 
@@ -35,6 +55,7 @@ if BASE_DIR not in sys.path:
 from parsers.parsers import parse_warc_stream_fastwarc
 from extractors.extractors import (
     extract_html_fields,
+    get_domain,
     detect_languages_batch,
     detect_dialects_batch,
 )
@@ -49,6 +70,9 @@ DEFAULT_MONTH = os.environ.get("CC_NEWS_MONTH", "05")
 DEFAULT_NUM_FILES = int(os.environ.get("CC_NEWS_NUM_FILES", "1"))
 DEFAULT_MAX_WORKERS = int(os.environ.get("CC_NEWS_MAX_WORKERS", "1"))
 DEFAULT_TIMEOUT = int(os.environ.get("CC_NEWS_TIMEOUT", "120"))  # seconds
+DEFAULT_EN_KEEP_RATE = float(os.environ.get("CC_NEWS_EN_KEEP_RATE", "0.1"))
+DEFAULT_MIN_WORDS = int(os.environ.get("CC_NEWS_MIN_WORDS", "80"))
+DEFAULT_MIN_WORDS_AR = int(os.environ.get("CC_NEWS_MIN_WORDS_AR", "50"))
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 DB_BATCH_SIZE = 500
@@ -56,13 +80,31 @@ HF_BATCH_SIZE = 32
 
 STATE_FILE = os.path.join(BASE_DIR, ".processed_warc_files.json")
 
-# Module-level copies set in main() so worker processes can see them
-# (ProcessPoolExecutor pickles the function; these are read inside the worker).
-YEAR = DEFAULT_YEAR
-MONTH = DEFAULT_MONTH
-NUM_FILES = DEFAULT_NUM_FILES
-MAX_WORKERS = DEFAULT_MAX_WORKERS
-REQUEST_TIMEOUT = DEFAULT_TIMEOUT
+# Domains that are never useful for this project (SEO / promo content).
+BLOCKED_DOMAINS = {
+    "sixactualites.fr", "lg.com",
+    "realting.com",        # real-estate UI text
+    "kinoafisha.info",     # cinema ticket-booking pages
+}
+
+# Listing pages, media pages and sponsored content are not articles.
+_NON_ARTICLE_URL_RE = re.compile(
+    r"/(?:tags?|categor(?:y|ies)|topics?|authors?|search|page|videos?"
+    r"|galler(?:y|ies)|horoscope\w*|live|podcasts?|forums?)(?:/|$)"
+    r"|/publi-|/sponsored|advertorial|/partner-content|[?&](?:s|q|search)=",
+    re.IGNORECASE,
+)
+
+
+def is_article_url(url: str) -> bool:
+    if not url or get_domain(url) in BLOCKED_DOMAINS:
+        return False
+    p = urlparse(url)
+    if p.path in ("", "/"):          # site home pages
+        return False
+    return not _NON_ARTICLE_URL_RE.search(
+        p.path + ("?" + p.query if p.query else "")
+    )
 
 
 def make_record_id(record, url, text):
@@ -91,7 +133,17 @@ def get_cc_news_paths(year: str, month: str, num_files: int, timeout: int):
     return [f"https://data.commoncrawl.org/{p}" for p in selected_paths]
 
 
-def flush_hf_batch(pending, db_batch):
+def flush_hf_batch(pending, db_batch, en_keep_rate, min_words, lang_counter):
+    """
+    Detect languages and apply filters for the pending batch and move wanted items to db_batch.
+
+    Drops:
+      - languages that are not target languages
+      - English articles beyond en_keep_rate (random down-sampling)
+      - non-Arabic articles shorter than min_words (Arabic already passed
+        its own, lower, threshold in the pre-filter)
+    Returns the number of dropped items.
+    """
     if not pending:
         return 0
     texts = [p["clean_text"] for p in pending]
@@ -107,26 +159,59 @@ def flush_hf_batch(pending, db_batch):
     filtered_out = 0
     for item, lang in zip(pending, languages):
         item["language"] = lang
-        if is_target_language(lang):
-            db_batch.append(item)
-        else:
+
+        if not is_target_language(lang):
             filtered_out += 1
+            continue
+        if lang != "ar" and item["word_count"] < min_words:
+            filtered_out += 1
+            continue
+        if lang == "en" and random.random() > en_keep_rate:
+            filtered_out += 1
+            continue
+
+        db_batch.append(item)
+        lang_counter[lang] += 1
 
     pending.clear()
     return filtered_out
 
 
-def process_one_warc_file(file_url: str) -> dict:
+def _empty_result(file_url, stream_error):
+    return {
+        "file_url": file_url,
+        "stored": 0,
+        "skipped": 0,
+        "skipped_lang": 0,
+        "db_errors": 0,
+        "extract_errors": 0,
+        "records_seen": 0,
+        "lang_counts": {},
+        "stream_error": stream_error,
+    }
+
+
+def process_one_warc_file(
+    file_url: str,
+    timeout: int,
+    max_workers: int,
+    en_keep_rate: float,
+    min_words: int,
+    min_words_ar: int,
+) -> dict:
     """
     Process a single WARC file inside a worker process.
-    Returns a summary dict for the parent to aggregate.
+    All settings arrive as arguments (module globals are NOT shared with
+    spawned workers on Windows).
     """
-    # Cap PyTorch intra-op threads so parallel workers don't oversubscribe CPUs.
     try:
         import torch
-        torch.set_num_threads(max(1, cpu_count() // max(1, MAX_WORKERS)))
+        torch.set_num_threads(max(1, cpu_count() // max(1, max_workers)))
     except ImportError:
         pass
+
+    # Pre-filter uses the lowest threshold, because language is unknown yet.
+    prefilter_words = min(min_words, min_words_ar)
 
     tag = file_url.rsplit("/", 1)[-1][:30]
     print(f"[{tag}] Worker started: opening DB connection...")
@@ -134,6 +219,8 @@ def process_one_warc_file(file_url: str) -> dict:
     conn = get_connection()
     pending_hf = []
     db_batch = []
+    seen_fp = set()        # near-duplicate filter (per WARC file)
+    lang_counter = Counter()
     stored = 0
     skipped = 0
     skipped_lang = 0
@@ -146,22 +233,11 @@ def process_one_warc_file(file_url: str) -> dict:
     try:
         stream_req = urllib.request.Request(file_url, headers=HEADERS)
         try:
-            stream_response = urllib.request.urlopen(
-                stream_req, timeout=REQUEST_TIMEOUT
-            )
+            stream_response = urllib.request.urlopen(stream_req, timeout=timeout)
         except urllib.error.URLError as e:
             stream_error = f"network: {e}"
             print(f"[STREAM ERROR] {file_url}: {stream_error}")
-            return {
-                "file_url": file_url,
-                "stored": 0,
-                "skipped": 0,
-                "skipped_lang": 0,
-                "db_errors": 0,
-                "extract_errors": 0,
-                "records_seen": 0,
-                "stream_error": stream_error,
-            }
+            return _empty_result(file_url, stream_error)
 
         with stream_response:
             try:
@@ -169,19 +245,13 @@ def process_one_warc_file(file_url: str) -> dict:
             except Exception as e:
                 stream_error = f"parse: {e}"
                 print(f"[STREAM ERROR] {file_url}: {stream_error}")
-                return {
-                    "file_url": file_url,
-                    "stored": 0,
-                    "skipped": 0,
-                    "skipped_lang": 0,
-                    "db_errors": 0,
-                    "extract_errors": 0,
-                    "records_seen": 0,
-                    "stream_error": stream_error,
-                }
+                return _empty_result(file_url, stream_error)
 
             for record in record_iter:
                 records_seen += 1
+                if not is_article_url(record.get("url", "")):
+                    skipped += 1
+                    continue
                 try:
                     fields = extract_html_fields(record)
                 except Exception as e:
@@ -193,9 +263,18 @@ def process_one_warc_file(file_url: str) -> dict:
 
                 word_count = fields.get("word_count", 0)
                 clean_text = fields.get("clean_text", "")
-                if word_count < 80 or not clean_text:
+                if word_count < prefilter_words or not clean_text:
                     skipped += 1
                     continue
+
+                fp = hashlib.md5(
+                    re.sub(r"\W+", "", clean_text[:400]).lower()
+                    .encode("utf-8", "ignore")
+                ).hexdigest()
+                if fp in seen_fp:
+                    skipped += 1
+                    continue
+                seen_fp.add(fp)
 
                 url = record.get("url", "")
                 pending_hf.append({
@@ -214,7 +293,9 @@ def process_one_warc_file(file_url: str) -> dict:
                 })
 
                 if len(pending_hf) >= HF_BATCH_SIZE:
-                    skipped_lang += flush_hf_batch(pending_hf, db_batch)
+                    skipped_lang += flush_hf_batch(
+                        pending_hf, db_batch, en_keep_rate, min_words, lang_counter
+                    )
 
                 if len(db_batch) >= DB_BATCH_SIZE:
                     try:
@@ -230,12 +311,15 @@ def process_one_warc_file(file_url: str) -> dict:
                 if now - last_print >= 10:
                     print(
                         f"[{tag}] records seen: {records_seen:,} | "
-                        f"stored: {stored:,} | skipped: {skipped:,}"
+                        f"stored: {stored:,} | skipped: {skipped:,} | "
+                        f"queued by lang: {dict(lang_counter)}"
                     )
                     last_print = now
 
         # Final flush for this file
-        skipped_lang += flush_hf_batch(pending_hf, db_batch)
+        skipped_lang += flush_hf_batch(
+            pending_hf, db_batch, en_keep_rate, min_words, lang_counter
+        )
         if db_batch:
             try:
                 save_batch_records(db_batch, conn=conn)
@@ -258,6 +342,7 @@ def process_one_warc_file(file_url: str) -> dict:
         "db_errors": db_errors,
         "extract_errors": extract_errors,
         "records_seen": records_seen,
+        "lang_counts": dict(lang_counter),
         "stream_error": stream_error,
     }
 
@@ -284,14 +369,10 @@ def run_parallel_pipeline(
     num_files: int,
     max_workers: int,
     timeout: int,
+    en_keep_rate: float,
+    min_words: int,
+    min_words_ar: int,
 ):
-    global YEAR, MONTH, NUM_FILES, MAX_WORKERS, REQUEST_TIMEOUT
-    YEAR = year
-    MONTH = month
-    NUM_FILES = num_files
-    MAX_WORKERS = max_workers
-    REQUEST_TIMEOUT = timeout
-
     init_db()
 
     try:
@@ -309,12 +390,14 @@ def run_parallel_pipeline(
         f"({skipped_already_done} already done, {len(remaining)} remaining)."
     )
     print(
-        f"Workers={max_workers} | timeout={timeout}s | "
-        f"year={year} month={month}"
+        f"Workers={max_workers} | timeout={timeout}s | year={year} month={month}\n"
+        f"EN keep rate={en_keep_rate} | min words={min_words} "
+        f"(Arabic: {min_words_ar})"
     )
 
     if not remaining:
-        print("Nothing to do -- all requested files were already processed.")
+        print("Nothing to do -- all requested files were already processed. "
+              "Raise --num-files to pull new files.")
         return
 
     start_time = time.perf_counter()
@@ -323,11 +406,15 @@ def run_parallel_pipeline(
     total_skipped_lang = 0
     total_db_errors = 0
     total_extract_errors = 0
+    total_lang = Counter()
     completed_count = 0
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(process_one_warc_file, url): url
+            executor.submit(
+                process_one_warc_file,
+                url, timeout, max_workers, en_keep_rate, min_words, min_words_ar,
+            ): url
             for url in remaining
         }
 
@@ -344,15 +431,15 @@ def run_parallel_pipeline(
             total_skipped_lang += result["skipped_lang"]
             total_db_errors += result["db_errors"]
             total_extract_errors += result.get("extract_errors", 0)
+            total_lang.update(result.get("lang_counts", {}))
             completed_count += 1
 
-            # Only mark done if we actually saw records (partial/crash retries).
             if result["records_seen"] > 0 and not result.get("stream_error"):
                 mark_file_processed(file_url, processed)
             else:
                 print(
                     f"[WARNING] {file_url}: records_seen={result['records_seen']} "
-                    f"stream_error={result.get('stream_error')!r} — "
+                    f"stream_error={result.get('stream_error')!r} -- "
                     f"NOT marked as processed, will retry next run"
                 )
 
@@ -370,16 +457,18 @@ def run_parallel_pipeline(
                 f"[{i}/{len(remaining)}] Done: {file_url} "
                 f"(+{result['stored']:,} stored, {result['skipped']:,} skipped, "
                 f"{result['skipped_lang']:,} lang-filtered, "
-                f"{result['db_errors']} db errors) | "
+                f"{result['db_errors']} db errors, "
+                f"by lang: {result.get('lang_counts', {})}) | "
                 f"Running total stored: {total_stored:,} | "
                 f"Avg/file: {avg_per_file:.1f}s | ETA remaining: {eta_str}"
             )
 
     end_time = time.perf_counter()
-    print(f"\nCompleted Processing!")
+    print("\nCompleted Processing!")
     print(f"Total Saved Records     : {total_stored:,}")
+    print(f"  by language (queued)  : {dict(total_lang)}")
     print(f"Total Skipped (extract) : {total_skipped:,}")
-    print(f"Total Skipped (lang)    : {total_skipped_lang:,}")
+    print(f"Total Skipped (lang/EN) : {total_skipped_lang:,}")
     print(f"Extract Errors          : {total_extract_errors}")
     print(f"Batches Failed (DB)     : {total_db_errors}")
     print(f"Total Execution Time    : {end_time - start_time:.2f} seconds")
@@ -389,26 +478,25 @@ def parse_args():
     p = argparse.ArgumentParser(
         description="Stream CC-NEWS WARC files into PostgreSQL (parallel)."
     )
-    p.add_argument(
-        "--year", default=DEFAULT_YEAR,
-        help=f"CC-NEWS year (default: {DEFAULT_YEAR})",
-    )
-    p.add_argument(
-        "--month", default=DEFAULT_MONTH,
-        help=f"CC-NEWS month zero-padded (default: {DEFAULT_MONTH})",
-    )
-    p.add_argument(
-        "--num-files", type=int, default=DEFAULT_NUM_FILES,
-        help=f"How many WARC files to process this run (default: {DEFAULT_NUM_FILES})",
-    )
-    p.add_argument(
-        "--workers", type=int, default=DEFAULT_MAX_WORKERS,
-        help=f"Parallel worker processes (default: {DEFAULT_MAX_WORKERS})",
-    )
-    p.add_argument(
-        "--timeout", type=int, default=DEFAULT_TIMEOUT,
-        help=f"HTTP timeout seconds for downloads (default: {DEFAULT_TIMEOUT})",
-    )
+    p.add_argument("--year", default=DEFAULT_YEAR,
+                   help=f"CC-NEWS year (default: {DEFAULT_YEAR})")
+    p.add_argument("--month", default=DEFAULT_MONTH,
+                   help=f"CC-NEWS month zero-padded (default: {DEFAULT_MONTH})")
+    p.add_argument("--num-files", type=int, default=DEFAULT_NUM_FILES,
+                   help=f"How many WARC files in total to cover "
+                        f"(default: {DEFAULT_NUM_FILES}); already-done files "
+                        f"are skipped")
+    p.add_argument("--workers", type=int, default=DEFAULT_MAX_WORKERS,
+                   help=f"Parallel worker processes (default: {DEFAULT_MAX_WORKERS})")
+    p.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT,
+                   help=f"HTTP timeout seconds (default: {DEFAULT_TIMEOUT})")
+    p.add_argument("--en-keep-rate", type=float, default=DEFAULT_EN_KEEP_RATE,
+                   help="Fraction of English articles to keep, 0-1 "
+                        f"(default: {DEFAULT_EN_KEEP_RATE})")
+    p.add_argument("--min-words", type=int, default=DEFAULT_MIN_WORDS,
+                   help=f"Min words for non-Arabic (default: {DEFAULT_MIN_WORDS})")
+    p.add_argument("--min-words-ar", type=int, default=DEFAULT_MIN_WORDS_AR,
+                   help=f"Min words for Arabic (default: {DEFAULT_MIN_WORDS_AR})")
     return p.parse_args()
 
 
@@ -420,4 +508,7 @@ if __name__ == "__main__":
         num_files=args.num_files,
         max_workers=args.workers,
         timeout=args.timeout,
+        en_keep_rate=args.en_keep_rate,
+        min_words=args.min_words,
+        min_words_ar=args.min_words_ar,
     )
