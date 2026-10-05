@@ -1,5 +1,17 @@
 # Query Service
 
+> **Branch note — baseline docs + multi-strategy work.**
+> This branch (`checkpoint/router-only`) started as a frozen router-only
+> baseline (see [Baseline checkpoint](#baseline-checkpoint-router-only-2026-09-26)
+> below: the router picked **exactly one** strategy per query, no chains)
+> and now also carries the multi-strategy session work on top: chained
+> composition (`chain_map`, `run_many`, `force_strategies`), 429
+> retry-then-429 handling, sequential rewrite fan-out, the hedge-word
+> routing fix, and eval harness upgrades. The `Baseline checkpoint` section
+> describes the frozen starting point; everything else in this file
+> describes the current code. To see only the post-baseline work:
+> `git diff bc84e34 -- query-ret-optimization`.
+
 A pluggable query-transformation service for RAG. Takes a raw user query,
 returns one or more retrieval-ready queries — via rewriting, expansion,
 decomposition, or passthrough, depending on what the query needs.
@@ -157,9 +169,121 @@ score itself.
 - [ ] Router occasionally misclassifies vague/indirect-reference queries
       (e.g. "tell me about the thing that replaced X") as passthrough —
       `CLASSIFY_PROMPT`'s few-shot examples don't yet cover this pattern
+- [ ] Consider rewrite-first fallback for garbled input — default chain stays
+      `decompose -> rewrite -> expand` (split before polish: rewriting a
+      multi-intent query first risks blending intents and erasing split
+      signals). If decompose ever fails on severely malformed queries, a
+      light `rewrite -> decompose` pre-clean pass could be tried as a
+      fallback, not the default. Revisit only with failing examples.
 - [ ] No caching of repeated queries — every call re-hits the LLM
-- [ ] No concurrency for multi-call strategies — not yet a problem
-      since each strategy currently makes one LLM call
+- [ ] Rewrite fan-out is sequential (`REWRITE_CONCURRENCY = 1` in `config.py`)
+      to spread Groq TPM usage — raise if p99 latency matters more than
+      rate-limit headroom (quality is identical either way: calls are
+      independent, same prompt/model, `temperature=0`)
 - [ ] Decide with the retrieval owner what (if anything) goes in `metadata`
-- [ ] Groq free tier rate limits (~30 req/min) — fine for solo dev,
-      watch for this if both teammates test simultaneously
+- [ ] Groq free tier rate limits (~30 req/min, 8000 TPM) — chains cost 2-5
+      LLM calls per query now (router + stages + per-sub-query rewrites).
+      `llm_client.py` retries twice honoring Groq's `try again in Xs` wait,
+      then the API returns truthful 429 + `Retry-After` instead of 500.
+      Eval defaults to `--delay 9` between requests; raise it if both
+      teammates test simultaneously
+
+## Baseline checkpoint (router-only, 2026-09-26)
+
+This section documents the frozen state of this branch: a **single-strategy**
+query pipeline. It is the reference point all multi-strategy work diffs
+against.
+
+### What was built in this baseline
+
+A FastAPI service (`POST /process_query`, `GET /health`) that takes a raw
+user query and returns retrieval-ready queries using **one** of four
+strategies per request:
+
+```
+raw query  →  [router picks ONE strategy]  →  [that strategy runs once]  →  queries
+```
+
+- **Router** (`router.py`) — `HybridRouter` (default): free heuristic
+  pre-filter, LLM fallback. Heuristics: multi-hop keywords (`compare`,
+  `" vs "`, `difference between`, `" and why"`, `" and how"`) → `decompose`;
+  ≤ 3 words (`SIMPLE_WORD_THRESHOLD`) → `passthrough`; everything else goes
+  to `LLMRouter`, one `temperature=0` classification call against
+  `CLASSIFY_PROMPT` (few-shot, JSON-mode structured output).
+- **Strategies** (`strategies/`) — each implements
+  `QueryStrategyBase.run(query: str) -> ProcessedQuery`: `passthrough`
+  (identity), `rewrite` (1 LLM call → clarified query), `expand` (1 LLM call
+  → original + 3 variants), `decompose` (1 LLM call → pronoun-resolved
+  sub-questions).
+- **Pipeline** (`pipeline.py`) — `QueryPipeline.process`: single entry
+  decision (`force_strategy` or `router.decide`), runs that one strategy.
+  No chaining, no fan-out, no result merging.
+- **LLM client** (`llm_client.py`) — Groq `AsyncGroq` + `instructor` in JSON
+  mode (tool-calling proved unreliable on gpt-oss), `openai/gpt-oss-20b`
+  for everything, `max_retries=3` for malformed JSON. **No 429 handling.**
+- **Contract** (`models.py`) — `QueryRequest(query, force_strategy?)`,
+  `ProcessedQuery(original_query, strategy_used, queries, metadata={})`.
+  Retrieval needs only `.queries`.
+- **Eval** (`eval/`) — 17 labeled queries across all four strategies;
+  `run_eval.py` hits the live service with a 3s throttle and saves
+  timestamped results.
+
+### What the baseline proved (eval evidence, run 2026-09-26)
+
+Score **15/17** with single-strategy routing: all `passthrough`, `expand`,
+and multi-hop `decompose` cases routed correctly with clean output
+(pronouns resolved, e.g. `them` → `RNNs`). The architecture's core bet —
+one public endpoint, no retrieval coupling, swappable router/strategies —
+held up unchanged through testing.
+
+### Limitations found (the reason for multi-strategy)
+
+1. **Hedge-word misroute** — `how attention works kinda` routed
+   `passthrough` instead of `rewrite`. 4 words bypass the ≤3-word shortcut,
+   and `CLASSIFY_PROMPT` has no hedge-word (`kinda`/`sorta`) example, so the
+   LLM reads it as a simple lookup. Vague phrasing slips through as-is.
+2. **429 surfaces as 500** — the 3-subquery RAG question crashed with
+   `Internal Server Error`. Server traceback proved TPM exhaustion
+   (`Limit 8000, Used 7622, Requested 1034, retry in 4.92s`):
+   `groq.RateLimitError` → `InstructorRetryException` → unhandled → 500.
+   `max_retries=3` covers malformed JSON, not rate limits. Any real load
+   (each request costs 1–2 LLM calls) hits this, and the 500 hides the cause.
+3. **One strategy is not enough** — `decompose` output is split but
+   unpolished (still vague); `rewrite` output is clear but narrow (no recall
+   variants). Real queries need *combinations*: split, then clarify each
+   part, then diversify for recall. The single-choice router cannot express
+   that, and parallel fan-out (run all, merge) just multiplies noise.
+
+### Where the multi-strategy work takes it (implemented on this branch, on top of the checkpoint)
+
+- **Chained composition, split-before-polish order:**
+  `decompose → rewrite → expand`. Decompose first (split signals + pronouns
+  still visible in the raw query), rewrite each single-intent sub-query,
+  expand last for recall. Reversed (`rewrite → decompose`) blends intents
+  and erases split signals — documented as a fallback for garbled input
+  only, never the default.
+- **Bounded defaults:** only `decompose → [decompose, rewrite]` chains by
+  default; `rewrite`/`expand` stay single-step (LLM cost), `expand` never
+  auto-appends. Any explicit chain runs verbatim via `force_strategies`
+  (router skipped) for testing — full `decompose → rewrite → expand`
+  stays forced-only until retrieval-side measurement justifies a default.
+- **Composable strategies:** `run(query) -> ProcessedQuery` becomes
+  `run_many(list) -> list` so stages feed each other; per-query LLM calls
+  run sequentially (`REWRITE_CONCURRENCY = 1`, tunable) to spread TPM
+  instead of spiking it — quality is identical either way (independent
+  calls, same prompt/model, `temperature=0`).
+- **Contract evolution:** `strategies_used: list` (primary) +
+  `strategy_used` kept as deprecated alias; `force_strategies: list`
+  alongside legacy `force_strategy`; `metadata={"chain": [...]}` trace.
+- **Reliability:** retry-twice on 429 honoring Groq's `try again in Xs`
+  (+ jitter), then truthful HTTP 429 + `Retry-After` instead of 500; eval
+  `--delay` flag (default ~9s, chains cost 2–5 calls now) and 429-aware
+  wait-once-and-resend.
+- **Routing accuracy:** `HEDGE_WORDS` shortcut (`kinda`, `sorta`, …) that
+  short-circuits to `rewrite` before the word-count check, plus a hedge
+  few-shot example in `CLASSIFY_PROMPT`.
+
+Compare any of this against the frozen baseline code:
+`git diff bc84e34 -- query-ret-optimization` shows all post-baseline work.
+(The `checkpoint/router-only-baseline` marker branch, if it still exists,
+points at the same frozen tree.)

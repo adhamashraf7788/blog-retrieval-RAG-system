@@ -1,4 +1,4 @@
-from query_service.models import ProcessedQuery, QueryStrategy
+from query_service.models import QueryStrategy
 from query_service.strategies.base import QueryStrategyBase
 
 
@@ -8,9 +8,5 @@ class PassthroughStrategy(QueryStrategyBase):
 
     name = QueryStrategy.PASSTHROUGH
 
-    async def run(self, query: str) -> ProcessedQuery:
-        return ProcessedQuery(
-            original_query=query,
-            strategy_used=self.name,
-            queries=[query],
-        )
+    async def run_many(self, queries: list[str]) -> list[str]:
+        return list(queries)

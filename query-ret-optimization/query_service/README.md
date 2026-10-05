@@ -163,21 +163,28 @@ score itself.
       and an explicit `>>> QUERY TO CLASSIFY <<<` marker in the prompt,
       but not fully eliminated — worth watching, and a candidate for
       moving to a shorter prompt or a more reliable model if it persists.
-- [ ] **No rate-limit handling** — a `429` from Groq currently surfaces as a
-      `500` to the caller instead of retrying with backoff. `max_retries=3`
-      on the instructor client covers malformed JSON but does not
-      specifically back off on rate limits. Groq's free tier (8000 TPM) is
-      tight enough that this shows up under any real load — not just heavy
-      testing — since each request can make 1-2 LLM calls (router +
-      strategy). Next step: wrap the Groq call in explicit backoff-on-429
-      handling (e.g. `tenacity`, using the wait time Groq returns in the
-      error message) so rate limits degrade gracefully instead of 500ing.
+- [x] **No rate-limit handling** — FIXED 2026-09-26: `llm_client.py` now
+      retries twice on 429s honoring Groq's `try again in Xs` wait (+ jitter),
+      then `api.py` returns truthful HTTP 429 + `Retry-After` instead of 500.
+      `instructor max_retries=3` still covers malformed JSON separately.
+      Chains cost 2-5 LLM calls per query now, so eval defaults to `--delay 9`.
 - [ ] Router occasionally misclassifies vague/indirect-reference queries
       (e.g. "tell me about the thing that replaced X") as passthrough —
-      `CLASSIFY_PROMPT`'s few-shot examples don't yet cover this pattern
+      `CLASSIFY_PROMPT`'s few-shot examples don't yet cover this pattern.
+      Partly mitigated 2026-09-26 with a `HEDGE_WORDS` shortcut + hedge
+      few-shot example (covers `kinda`/`sorta`-style phrasing) — the
+      indirect-reference gap above remains.
+- [ ] Consider rewrite-first fallback for garbled input — default chain stays
+      `decompose -> rewrite -> expand` (split before polish: rewriting a
+      multi-intent query first risks blending intents and erasing split
+      signals). If decompose ever fails on severely malformed queries, a
+      light `rewrite -> decompose` pre-clean pass could be tried as a
+      fallback, not the default. Revisit only with failing examples.
 - [ ] No caching of repeated queries — every call re-hits the LLM
-- [ ] No concurrency for multi-call strategies — not yet a problem
-      since each strategy currently makes one LLM call
+- [ ] Rewrite fan-out is sequential (`REWRITE_CONCURRENCY = 1` in `config.py`)
+      to spread Groq TPM usage — raise if p99 latency matters more than
+      rate-limit headroom (quality is identical either way: calls are
+      independent, same prompt/model, `temperature=0`)
 - [ ] Decide with the retrieval owner what (if anything) goes in `metadata`
 - [ ] Groq free tier rate limits (~30 req/min, 8000 TPM) — fine for solo
       dev with throttled eval runs, watch for this if both teammates test
